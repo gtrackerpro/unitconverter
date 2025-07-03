@@ -44,4 +44,3 @@ client/coverage/
 # Temporary files
 *.tmp
 *.temp
-.env.*.local

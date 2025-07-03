@@ -1,0 +1,125 @@
+<div class="container">
+  <div class="card">
+    <h1 style="text-align: center; margin-bottom: 2rem; color: #374151; font-size: 2.5rem; font-weight: 700;">
+      🔄 Unit Converter
+    </h1>
+    
+    <form (ngSubmit)="onSubmit()" #conversionFormRef="ngForm">
+      <div class="grid">
+        <div class="form-group">
+          <label for="value">Value to Convert</label>
+          <input
+            type="number"
+            id="value"
+            class="form-control"
+            [(ngModel)]="conversionForm.value"
+            name="value"
+            placeholder="Enter value"
+            required
+            min="0"
+            step="any"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="mode">Computation Mode</label>
+          <select
+            id="mode"
+            class="form-control"
+            [(ngModel)]="conversionForm.mode"
+            name="mode"
+            required
+          >
+            <option *ngFor="let mode of modes" [value]="mode.value">
+              {{ mode.label }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="form-group">
+          <label for="from">From Unit</label>
+          <select
+            id="from"
+            class="form-control"
+            [(ngModel)]="conversionForm.from"
+            name="from"
+            required
+          >
+            <option *ngFor="let unit of units" [value]="unit.value">
+              {{ unit.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="to">To Unit</label>
+          <select
+            id="to"
+            class="form-control"
+            [(ngModel)]="conversionForm.to"
+            name="to"
+            required
+          >
+            <option *ngFor="let unit of units" [value]="unit.value">
+              {{ unit.label }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 2rem;">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="loading || !conversionFormRef.form.valid"
+        >
+          <span *ngIf="loading" class="loading"></span>
+          <span *ngIf="!loading">Convert</span>
+          <span *ngIf="loading" style="margin-left: 0.5rem;">Converting...</span>
+        </button>
+      </div>
+    </form>
+
+    <div *ngIf="error" class="card" style="background: #fee2e2; border-left: 4px solid #ef4444; margin-top: 1rem;">
+      <p style="color: #dc2626; font-weight: 500;">{{ error }}</p>
+    </div>
+
+    <div *ngIf="result" class="result-card card">
+      <div class="result-value">
+        {{ result.result | number:'1.2-6' }}
+      </div>
+      <div class="result-time">
+        Computed in {{ result.time_taken_ms }}ms using {{ conversionForm.mode.toUpperCase() }}
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="history.length > 0" class="history-section">
+    <div class="card">
+      <h2 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.5rem; font-weight: 600;">
+        📊 Recent Conversions
+      </h2>
+      
+      <div *ngFor="let item of history" class="history-item">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <strong>{{ item.input_value | number:'1.2-6' }}</strong> {{ getUnitLabel(item.from_unit) }}
+            →
+            <strong>{{ item.converted_value | number:'1.2-6' }}</strong> {{ getUnitLabel(item.to_unit) }}
+          </div>
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            <span style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 6px; margin-right: 0.5rem;">
+              {{ item.mode.toUpperCase() }}
+            </span>
+            <span style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 6px; margin-right: 0.5rem;">
+              {{ item.time_taken_ms }}ms
+            </span>
+            <span>{{ formatDate(item.timestamp) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

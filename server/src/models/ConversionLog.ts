@@ -19,12 +19,26 @@ const ConversionLogSchema: Schema = new Schema({
   from_unit: {
     type: String,
     required: true,
-    enum: ['meter', 'feet', 'kilometer', 'mile']
+    enum: [
+      // Length units
+      'meter', 'feet', 'kilometer', 'mile', 'centimeter', 'inch', 'yard',
+      // Mass units
+      'kilogram', 'gram', 'pound', 'ounce', 'ton', 'stone',
+      // Temperature units
+      'celsius', 'fahrenheit', 'kelvin'
+    ]
   },
   to_unit: {
     type: String,
     required: true,
-    enum: ['meter', 'feet', 'kilometer', 'mile']
+    enum: [
+      // Length units
+      'meter', 'feet', 'kilometer', 'mile', 'centimeter', 'inch', 'yard',
+      // Mass units
+      'kilogram', 'gram', 'pound', 'ounce', 'ton', 'stone',
+      // Temperature units
+      'celsius', 'fahrenheit', 'kelvin'
+    ]
   },
   converted_value: {
     type: Number,
@@ -48,5 +62,6 @@ const ConversionLogSchema: Schema = new Schema({
 
 // Index for better query performance
 ConversionLogSchema.index({ timestamp: -1 });
+ConversionLogSchema.index({ from_unit: 1, to_unit: 1 });
 
 export default mongoose.model<IConversionLog>('ConversionLog', ConversionLogSchema);

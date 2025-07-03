@@ -1,10 +1,27 @@
 <div class="container">
   <div class="card">
     <h1 style="text-align: center; margin-bottom: 2rem; color: #374151; font-size: 2.5rem; font-weight: 700;">
-      🔄 Unit Converter
+      🔄 Universal Unit Converter
     </h1>
     
     <form (ngSubmit)="onSubmit()" #conversionFormRef="ngForm">
+      <!-- Category Selection -->
+      <div class="form-group">
+        <label for="category">Unit Category</label>
+        <select
+          id="category"
+          class="form-control"
+          [(ngModel)]="selectedCategory"
+          name="category"
+          (ngModelChange)="onCategoryChange()"
+          required
+        >
+          <option *ngFor="let category of categories" [value]="category.value">
+            {{ category.label }}
+          </option>
+        </select>
+      </div>
+
       <div class="grid">
         <div class="form-group">
           <label for="value">Value to Convert</label>
@@ -28,6 +45,7 @@
             class="form-control"
             [(ngModel)]="conversionForm.mode"
             name="mode"
+            (ngModelChange)="onModeChange()"
             required
           >
             <option *ngFor="let mode of modes" [value]="mode.value">
@@ -47,7 +65,7 @@
             name="from"
             required
           >
-            <option *ngFor="let unit of units" [value]="unit.value">
+            <option *ngFor="let unit of currentUnits" [value]="unit.value">
               {{ unit.label }}
             </option>
           </select>
@@ -62,7 +80,7 @@
             name="to"
             required
           >
-            <option *ngFor="let unit of units" [value]="unit.value">
+            <option *ngFor="let unit of currentUnits" [value]="unit.value">
               {{ unit.label }}
             </option>
           </select>
@@ -105,6 +123,7 @@
       <div *ngFor="let item of history" class="history-item">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
           <div>
+            <span class="category-badge">{{ getCategoryLabel(item.from_unit, item.to_unit) }}</span>
             <strong>{{ item.input_value | number:'1.2-6' }}</strong> {{ getUnitLabel(item.from_unit) }}
             →
             <strong>{{ item.converted_value | number:'1.2-6' }}</strong> {{ getUnitLabel(item.to_unit) }}

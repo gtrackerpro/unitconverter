@@ -5,12 +5,15 @@
 
 class UnitConverter {
 private:
-    // Conversion factors to meters
+    // Conversion factors to meters (length units only)
     std::map<std::string, double> conversionFactors = {
         {"meter", 1.0},
         {"feet", 0.3048},
         {"kilometer", 1000.0},
-        {"mile", 1609.344}
+        {"mile", 1609.344},
+        {"centimeter", 0.01},
+        {"inch", 0.0254},
+        {"yard", 0.9144}
     };
 
 public:
@@ -19,7 +22,7 @@ public:
         auto toIt = conversionFactors.find(to);
         
         if (fromIt == conversionFactors.end() || toIt == conversionFactors.end()) {
-            throw std::invalid_argument("Unsupported unit");
+            throw std::invalid_argument("Unsupported unit - C++ converter only supports length units");
         }
         
         // Convert to meters first, then to target unit
@@ -33,6 +36,7 @@ public:
 int main(int argc, char* argv[]) {
     if (argc != 4) {
         std::cerr << "Usage: " << argv[0] << " <value> <from_unit> <to_unit>" << std::endl;
+        std::cerr << "Supported units: meter, feet, kilometer, mile, centimeter, inch, yard" << std::endl;
         return 1;
     }
     

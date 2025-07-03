@@ -120,12 +120,6 @@ export class ConversionService {
   }
 
   static async convertWithCpp(value: number, from: string, to: string): Promise<number> {
-    // C++ converter only supports length units
-    const category = this.getUnitCategory(from);
-    if (category !== 'length') {
-      throw new Error('C++ converter only supports length units');
-    }
-
     try {
       const cppExecutable = path.join(__dirname, '../../cpp/unit_converter');
       const { stdout } = await execFileAsync(cppExecutable, [

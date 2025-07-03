@@ -45,7 +45,6 @@
             class="form-control"
             [(ngModel)]="conversionForm.mode"
             name="mode"
-            (ngModelChange)="onModeChange()"
             required
           >
             <option *ngFor="let mode of modes" [value]="mode.value">

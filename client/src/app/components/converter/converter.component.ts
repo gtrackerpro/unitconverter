@@ -58,7 +58,7 @@ export class ConverterComponent implements OnInit {
 
   modes = [
     { value: 'node', label: 'Node.js' },
-    { value: 'cpp', label: 'C++ (Length only)' }
+    { value: 'cpp', label: 'C++' }
   ];
 
   constructor(private conversionService: ConversionService) {}
@@ -78,22 +78,8 @@ export class ConverterComponent implements OnInit {
     this.conversionForm.from = firstUnit;
     this.conversionForm.to = secondUnit;
     
-    // Reset to Node.js mode if C++ is selected and category is not length
-    if (this.conversionForm.mode === 'cpp' && this.selectedCategory !== 'length') {
-      this.conversionForm.mode = 'node';
-    }
-    
     this.result = null;
     this.error = null;
-  }
-
-  onModeChange() {
-    // Prevent C++ mode for non-length categories
-    if (this.conversionForm.mode === 'cpp' && this.selectedCategory !== 'length') {
-      this.conversionForm.mode = 'node';
-      this.error = 'C++ mode is only available for length conversions';
-      setTimeout(() => this.error = null, 3000);
-    }
   }
 
   onSubmit() {
@@ -104,12 +90,6 @@ export class ConverterComponent implements OnInit {
 
     if (this.conversionForm.from === this.conversionForm.to) {
       this.error = 'Please select different units for conversion';
-      return;
-    }
-
-    // Validate C++ mode usage
-    if (this.conversionForm.mode === 'cpp' && this.selectedCategory !== 'length') {
-      this.error = 'C++ mode is only available for length conversions';
       return;
     }
 

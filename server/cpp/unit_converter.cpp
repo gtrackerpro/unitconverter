@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <vector>
+#include <sstream>
 
 class UnitConverter {
 private:
@@ -151,33 +152,64 @@ public:
 };
 
 int main(int argc, char* argv[]) {
+    // Handle legacy command-line mode for backward compatibility
     if (argc == 2 && std::string(argv[1]) == "--help") {
         UnitConverter converter;
         std::cout << "Usage: " << argv[0] << " <value> <from_unit> <to_unit>" << std::endl;
+        std::cout << "Or run without arguments for persistent service mode" << std::endl;
         converter.printSupportedUnits();
         return 0;
     }
 
-    if (argc != 4) {
-        std::cerr << "Usage: " << argv[0] << " <value> <from_unit> <to_unit>" << std::endl;
-        std::cerr << "Use --help to see supported units" << std::endl;
-        return 1;
+    if (argc == 4) {
+        // Legacy command-line mode
+        try {
+            double value = std::stod(argv[1]);
+            std::string from = argv[2];
+            std::string to = argv[3];
+            
+            UnitConverter converter;
+            double result = converter.convert(value, from, to);
+            
+            std::cout << std::fixed << std::setprecision(10) << result << std::endl;
+            
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 1;
+        }
+        return 0;
     }
+
+    // Persistent service mode
+    UnitConverter converter;
+    std::string line;
     
-    try {
-        double value = std::stod(argv[1]);
-        std::string from = argv[2];
-        std::string to = argv[3];
+    // Signal that the service is ready
+    std::cout << "READY" << std::endl;
+    std::cout.flush();
+    
+    while (std::getline(std::cin, line)) {
+        if (line.empty()) continue;
         
-        UnitConverter converter;
-        double result = converter.convert(value, from, to);
+        std::istringstream iss(line);
+        std::string requestId;
+        double value;
+        std::string from, to;
         
-        // Output with high precision
-        std::cout << std::fixed << std::setprecision(10) << result << std::endl;
+        if (!(iss >> requestId >> value >> from >> to)) {
+            std::cout << requestId << " ERROR Invalid input format" << std::endl;
+            std::cout.flush();
+            continue;
+        }
         
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
+        try {
+            double result = converter.convert(value, from, to);
+            std::cout << requestId << " " << std::fixed << std::setprecision(10) << result << std::endl;
+        } catch (const std::exception& e) {
+            std::cout << requestId << " ERROR " << e.what() << std::endl;
+        }
+        
+        std::cout.flush();
     }
     
     return 0;

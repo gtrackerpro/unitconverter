@@ -3,12 +3,18 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import { spawn, ChildProcess } from 'child_process';
+import path from 'path';
 import conversionRoutes from './routes/conversion.routes';
+import { ConversionService } from './services/conversion.service';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Global C++ process variable
+let cppProcess: ChildProcess | null = null;
 
 // Middleware
 app.use(helmet());
@@ -24,7 +30,11 @@ app.use('/api', conversionRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    cppService: cppProcess ? 'running' : 'stopped'
+  });
 });
 
 // Error handling middleware
@@ -57,9 +67,83 @@ const connectDB = async () => {
   }
 };
 
+// Initialize C++ service
+const initializeCppService = () => {
+  try {
+    const cppExecutable = path.join(__dirname, '../cpp/unit_converter');
+    console.log('🔧 Starting C++ service:', cppExecutable);
+    
+    cppProcess = spawn(cppExecutable, [], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    // Handle C++ process output
+    cppProcess.stdout?.on('data', (data: Buffer) => {
+      ConversionService.handleCppOutput(data);
+    });
+
+    // Handle C++ process errors
+    cppProcess.stderr?.on('data', (data: Buffer) => {
+      console.error('❌ C++ service error:', data.toString());
+    });
+
+    // Handle C++ process close
+    cppProcess.on('close', (code) => {
+      console.log(`⚠️ C++ service exited with code ${code}`);
+      cppProcess = null;
+      
+      // Attempt to restart after a delay
+      setTimeout(() => {
+        console.log('🔄 Attempting to restart C++ service...');
+        initializeCppService();
+      }, 5000);
+    });
+
+    // Handle C++ process errors
+    cppProcess.on('error', (error) => {
+      console.error('❌ Failed to start C++ service:', error.message);
+      cppProcess = null;
+    });
+
+    // Set the process in the conversion service
+    ConversionService.setCppProcess(cppProcess);
+    
+    console.log('✅ C++ service initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize C++ service:', error);
+  }
+};
+
+// Graceful shutdown
+const gracefulShutdown = () => {
+  console.log('🛑 Shutting down gracefully...');
+  
+  if (cppProcess) {
+    console.log('🔧 Terminating C++ service...');
+    cppProcess.kill('SIGTERM');
+    
+    // Force kill after 5 seconds if not terminated
+    setTimeout(() => {
+      if (cppProcess && !cppProcess.killed) {
+        console.log('⚠️ Force killing C++ service...');
+        cppProcess.kill('SIGKILL');
+      }
+    }, 5000);
+  }
+  
+  process.exit(0);
+};
+
+// Handle shutdown signals
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
+
 // Start server
 const startServer = async () => {
   await connectDB();
+  
+  // Initialize C++ service
+  initializeCppService();
   
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);

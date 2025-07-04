@@ -88,10 +88,8 @@ export class ConverterComponent implements OnInit {
       return;
     }
 
-    if (this.conversionForm.from === this.conversionForm.to) {
-      this.error = 'Please select different units for conversion';
-      return;
-    }
+    // Removed the same-unit restriction - let backend handle it
+    // Users might want to convert same units for testing or verification
 
     this.loading = true;
     this.error = null;

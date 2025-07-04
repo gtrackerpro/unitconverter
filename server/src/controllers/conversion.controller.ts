@@ -28,15 +28,12 @@ export class ConversionController {
 
       if (!ConversionService.validateUnits(from, to)) {
         return res.status(400).json({
-          message: 'Invalid units. Supported units: meter, feet, kilometer, mile'
+          message: 'Invalid units or units from different categories'
         });
       }
 
-      if (from === to) {
-        return res.status(400).json({
-          message: 'From and to units cannot be the same'
-        });
-      }
+      // Removed same-unit restriction - allow same unit conversions
+      // This is useful for testing, verification, or user preference
 
       // Perform conversion with timing
       const startTime = performance.now();

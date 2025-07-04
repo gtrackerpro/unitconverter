@@ -62,6 +62,7 @@
             class="form-control"
             [(ngModel)]="conversionForm.from"
             name="from"
+            (ngModelChange)="onFromUnitChange()"
             required
           >
             <option *ngFor="let unit of currentUnits" [value]="unit.value">
@@ -79,7 +80,7 @@
             name="to"
             required
           >
-            <option *ngFor="let unit of currentUnits" [value]="unit.value">
+            <option *ngFor="let unit of availableToUnits" [value]="unit.value">
               {{ unit.label }}
             </option>
           </select>

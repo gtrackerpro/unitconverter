@@ -32,8 +32,12 @@ export class ConversionController {
         });
       }
 
-      // Removed same-unit restriction - allow same unit conversions
-      // This is useful for testing, verification, or user preference
+      // Re-add same-unit validation since UI now prevents it
+      if (from === to) {
+        return res.status(400).json({
+          message: 'From and to units cannot be the same'
+        });
+      }
 
       // Perform conversion with timing
       const startTime = performance.now();

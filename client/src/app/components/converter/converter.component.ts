@@ -71,6 +71,11 @@ export class ConverterComponent implements OnInit {
     return this.unitsByCategory[this.selectedCategory as keyof typeof this.unitsByCategory] || [];
   }
 
+  // Get filtered units for "To" dropdown (excluding the selected "From" unit)
+  get availableToUnits() {
+    return this.currentUnits.filter(unit => unit.value !== this.conversionForm.from);
+  }
+
   onCategoryChange() {
     const firstUnit = this.currentUnits[0]?.value;
     const secondUnit = this.currentUnits[1]?.value || firstUnit;
@@ -82,14 +87,32 @@ export class ConverterComponent implements OnInit {
     this.error = null;
   }
 
+  // Handle "From" unit change and update "To" unit if needed
+  onFromUnitChange() {
+    // If the "To" unit is the same as the newly selected "From" unit,
+    // automatically select a different "To" unit
+    if (this.conversionForm.to === this.conversionForm.from) {
+      const availableUnits = this.availableToUnits;
+      if (availableUnits.length > 0) {
+        this.conversionForm.to = availableUnits[0].value;
+      }
+    }
+    
+    this.result = null;
+    this.error = null;
+  }
+
   onSubmit() {
     if (this.conversionForm.value <= 0) {
       this.error = 'Please enter a valid positive number';
       return;
     }
 
-    // Removed the same-unit restriction - let backend handle it
-    // Users might want to convert same units for testing or verification
+    // This check is now redundant due to UI filtering, but kept as safety
+    if (this.conversionForm.from === this.conversionForm.to) {
+      this.error = 'Please select different units for conversion';
+      return;
+    }
 
     this.loading = true;
     this.error = null;

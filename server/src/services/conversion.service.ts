@@ -1,16 +1,33 @@
 import { ChildProcess } from 'child_process';
-import path from 'path';
 
 export class ConversionService {
-  // C++ service management
+  // Service management
   private static cppProcess: ChildProcess | null = null;
-  private static pendingRequests = new Map<string, { 
+  private static pythonProcess: ChildProcess | null = null;
+  private static javaProcess: ChildProcess | null = null;
+  
+  private static cppPendingRequests = new Map<string, { 
     resolve: (value: number) => void; 
     reject: (reason?: any) => void;
     timeout: NodeJS.Timeout;
   }>();
+  
+  private static pythonPendingRequests = new Map<string, { 
+    resolve: (value: number) => void; 
+    reject: (reason?: any) => void;
+    timeout: NodeJS.Timeout;
+  }>();
+  
+  private static javaPendingRequests = new Map<string, { 
+    resolve: (value: number) => void; 
+    reject: (reason?: any) => void;
+    timeout: NodeJS.Timeout;
+  }>();
+  
   private static requestIdCounter = 0;
-  private static isReady = false;
+  private static cppReady = false;
+  private static pythonReady = false;
+  private static javaReady = false;
 
   // Length conversion factors to meters
   private static readonly LENGTH_FACTORS = {
@@ -36,57 +53,106 @@ export class ConversionService {
   // Temperature conversion functions
   private static readonly TEMPERATURE_UNITS = ['celsius', 'fahrenheit', 'kelvin'];
 
+  // Process setters
   static setCppProcess(process: ChildProcess) {
     this.cppProcess = process;
-    this.isReady = false;
+    this.cppReady = false;
   }
 
+  static setPythonProcess(process: ChildProcess) {
+    this.pythonProcess = process;
+    this.pythonReady = false;
+  }
+
+  static setJavaProcess(process: ChildProcess) {
+    this.javaProcess = process;
+    this.javaReady = false;
+  }
+
+  // Output handlers
   static handleCppOutput(data: Buffer) {
     const output = data.toString().trim();
     const lines = output.split('\n');
     
     for (const line of lines) {
       if (line === 'READY') {
-        this.isReady = true;
+        this.cppReady = true;
         console.log('✅ C++ service is ready');
         continue;
       }
       
-      const parts = line.split(' ');
-      if (parts.length < 2) continue;
+      this.processServiceOutput(line, this.cppPendingRequests, 'C++');
+    }
+  }
+
+  static handlePythonOutput(data: Buffer) {
+    const output = data.toString().trim();
+    const lines = output.split('\n');
+    
+    for (const line of lines) {
+      if (line === 'READY') {
+        this.pythonReady = true;
+        console.log('✅ Python service is ready');
+        continue;
+      }
       
-      const requestId = parts[0];
-      const pending = this.pendingRequests.get(requestId);
+      this.processServiceOutput(line, this.pythonPendingRequests, 'Python');
+    }
+  }
+
+  static handleJavaOutput(data: Buffer) {
+    const output = data.toString().trim();
+    const lines = output.split('\n');
+    
+    for (const line of lines) {
+      if (line === 'READY') {
+        this.javaReady = true;
+        console.log('✅ Java service is ready');
+        continue;
+      }
       
-      if (!pending) continue;
-      
-      // Clear timeout
-      clearTimeout(pending.timeout);
-      this.pendingRequests.delete(requestId);
-      
-      if (parts[1] === 'ERROR') {
-        const errorMessage = parts.slice(2).join(' ');
-        pending.reject(new Error(errorMessage));
+      this.processServiceOutput(line, this.javaPendingRequests, 'Java');
+    }
+  }
+
+  private static processServiceOutput(
+    line: string, 
+    pendingRequests: Map<string, any>, 
+    serviceName: string
+  ) {
+    const parts = line.split(' ');
+    if (parts.length < 2) return;
+    
+    const requestId = parts[0];
+    const pending = pendingRequests.get(requestId);
+    
+    if (!pending) return;
+    
+    // Clear timeout
+    clearTimeout(pending.timeout);
+    pendingRequests.delete(requestId);
+    
+    if (parts[1] === 'ERROR') {
+      const errorMessage = parts.slice(2).join(' ');
+      pending.reject(new Error(errorMessage));
+    } else {
+      const result = parseFloat(parts[1]);
+      if (isNaN(result)) {
+        pending.reject(new Error(`Invalid result from ${serviceName} service`));
       } else {
-        const result = parseFloat(parts[1]);
-        if (isNaN(result)) {
-          pending.reject(new Error('Invalid result from C++ service'));
-        } else {
-          pending.resolve(result);
-        }
+        pending.resolve(result);
       }
     }
   }
 
+  // Node.js conversion (unchanged)
   static async convertWithNode(value: number, from: string, to: string): Promise<number> {
-    // Determine unit category
     const category = this.getUnitCategory(from);
     
     if (!category) {
       throw new Error(`Unsupported unit: ${from}`);
     }
 
-    // Validate that both units are in the same category
     if (this.getUnitCategory(to) !== category) {
       throw new Error(`Cannot convert between different unit categories: ${from} to ${to}`);
     }
@@ -111,7 +177,6 @@ export class ConversionService {
       throw new Error(`Unsupported length unit conversion: ${from} to ${to}`);
     }
     
-    // Convert to meters first, then to target unit
     const meters = value * fromFactor;
     return meters / toFactor;
   }
@@ -124,7 +189,6 @@ export class ConversionService {
       throw new Error(`Unsupported mass unit conversion: ${from} to ${to}`);
     }
     
-    // Convert to kilograms first, then to target unit
     const kilograms = value * fromFactor;
     return kilograms / toFactor;
   }
@@ -132,7 +196,6 @@ export class ConversionService {
   private static convertTemperature(value: number, from: string, to: string): number {
     if (from === to) return value;
 
-    // Convert from source to Celsius first
     let celsius: number;
     switch (from) {
       case 'celsius':
@@ -148,7 +211,6 @@ export class ConversionService {
         throw new Error(`Unsupported temperature unit: ${from}`);
     }
 
-    // Convert from Celsius to target unit
     switch (to) {
       case 'celsius':
         return celsius;
@@ -168,46 +230,72 @@ export class ConversionService {
     return null;
   }
 
+  // External service conversions
   static async convertWithCpp(value: number, from: string, to: string): Promise<number> {
-    if (!this.cppProcess || !this.isReady) {
-      throw new Error('C++ service is not available. Using Node.js fallback.');
+    return this.convertWithExternalService(
+      value, from, to, 
+      this.cppProcess, this.cppReady, this.cppPendingRequests, 'C++'
+    );
+  }
+
+  static async convertWithPython(value: number, from: string, to: string): Promise<number> {
+    return this.convertWithExternalService(
+      value, from, to, 
+      this.pythonProcess, this.pythonReady, this.pythonPendingRequests, 'Python'
+    );
+  }
+
+  static async convertWithJava(value: number, from: string, to: string): Promise<number> {
+    return this.convertWithExternalService(
+      value, from, to, 
+      this.javaProcess, this.javaReady, this.javaPendingRequests, 'Java'
+    );
+  }
+
+  private static async convertWithExternalService(
+    value: number, 
+    from: string, 
+    to: string,
+    process: ChildProcess | null,
+    isReady: boolean,
+    pendingRequests: Map<string, any>,
+    serviceName: string
+  ): Promise<number> {
+    if (!process || !isReady) {
+      throw new Error(`${serviceName} service is not available. Using Node.js fallback.`);
     }
 
     return new Promise((resolve, reject) => {
       const requestId = `req_${++this.requestIdCounter}`;
       
-      // Set up timeout (5 seconds)
       const timeout = setTimeout(() => {
-        this.pendingRequests.delete(requestId);
-        reject(new Error('C++ conversion timeout'));
+        pendingRequests.delete(requestId);
+        reject(new Error(`${serviceName} conversion timeout`));
       }, 5000);
       
-      // Store the promise handlers
-      this.pendingRequests.set(requestId, { resolve, reject, timeout });
+      pendingRequests.set(requestId, { resolve, reject, timeout });
       
-      // Send request to C++ service
       const request = `${requestId} ${value} ${from} ${to}\n`;
       
       try {
-        if (!this.cppProcess?.stdin?.write(request)) {
-          // If write fails, clean up and reject
+        if (!process?.stdin?.write(request)) {
           clearTimeout(timeout);
-          this.pendingRequests.delete(requestId);
-          reject(new Error('Failed to write to C++ service'));
+          pendingRequests.delete(requestId);
+          reject(new Error(`Failed to write to ${serviceName} service`));
         }
       } catch (error) {
         clearTimeout(timeout);
-        this.pendingRequests.delete(requestId);
-        reject(new Error(`C++ service communication error: ${error}`));
+        pendingRequests.delete(requestId);
+        reject(new Error(`${serviceName} service communication error: ${error}`));
       }
     });
   }
 
+  // Utility methods
   static validateUnits(from: string, to: string): boolean {
     const fromCategory = this.getUnitCategory(from);
     const toCategory = this.getUnitCategory(to);
     
-    // Both units must be valid and in the same category
     return fromCategory !== null && toCategory !== null && fromCategory === toCategory;
   }
 
@@ -219,12 +307,23 @@ export class ConversionService {
     ];
   }
 
-  // Get C++ service status
-  static getCppServiceStatus(): { available: boolean; ready: boolean; pendingRequests: number } {
+  static getServiceStatus() {
     return {
-      available: this.cppProcess !== null,
-      ready: this.isReady,
-      pendingRequests: this.pendingRequests.size
+      cpp: {
+        available: this.cppProcess !== null,
+        ready: this.cppReady,
+        pendingRequests: this.cppPendingRequests.size
+      },
+      python: {
+        available: this.pythonProcess !== null,
+        ready: this.pythonReady,
+        pendingRequests: this.pythonPendingRequests.size
+      },
+      java: {
+        available: this.javaProcess !== null,
+        ready: this.javaReady,
+        pendingRequests: this.javaPendingRequests.size
+      }
     };
   }
 }

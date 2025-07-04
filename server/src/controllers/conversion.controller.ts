@@ -20,9 +20,9 @@ export class ConversionController {
         });
       }
 
-      if (!['node', 'cpp'].includes(mode)) {
+      if (!['node', 'cpp', 'python', 'java'].includes(mode)) {
         return res.status(400).json({
-          message: 'Mode must be either "node" or "cpp"'
+          message: 'Mode must be one of: "node", "cpp", "python", "java"'
         });
       }
 
@@ -32,7 +32,6 @@ export class ConversionController {
         });
       }
 
-      // Re-add same-unit validation since UI now prevents it
       if (from === to) {
         return res.status(400).json({
           message: 'From and to units cannot be the same'
@@ -43,14 +42,25 @@ export class ConversionController {
       const startTime = performance.now();
       let result: number;
 
-      if (mode === 'node') {
-        result = await ConversionService.convertWithNode(value, from, to);
-      } else {
-        result = await ConversionService.convertWithCpp(value, from, to);
+      switch (mode) {
+        case 'node':
+          result = await ConversionService.convertWithNode(value, from, to);
+          break;
+        case 'cpp':
+          result = await ConversionService.convertWithCpp(value, from, to);
+          break;
+        case 'python':
+          result = await ConversionService.convertWithPython(value, from, to);
+          break;
+        case 'java':
+          result = await ConversionService.convertWithJava(value, from, to);
+          break;
+        default:
+          throw new Error(`Unsupported mode: ${mode}`);
       }
 
       const endTime = performance.now();
-      const timeTaken = Math.round((endTime - startTime) * 100) / 100; // Round to 2 decimal places
+      const timeTaken = Math.round((endTime - startTime) * 100) / 100;
 
       // Log to database
       const conversionLog = new ConversionLog({

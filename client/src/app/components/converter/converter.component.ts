@@ -58,7 +58,9 @@ export class ConverterComponent implements OnInit {
 
   modes = [
     { value: 'node', label: 'Node.js' },
-    { value: 'cpp', label: 'C++' }
+    { value: 'cpp', label: 'C++' },
+    { value: 'python', label: 'Python' },
+    { value: 'java', label: 'Java' }
   ];
 
   constructor(private conversionService: ConversionService) {}
@@ -162,5 +164,10 @@ export class ConverterComponent implements OnInit {
 
   formatDate(date: Date): string {
     return new Date(date).toLocaleString();
+  }
+
+  getModeDisplayName(mode: string): string {
+    const modeObj = this.modes.find(m => m.value === mode);
+    return modeObj ? modeObj.label : mode.toUpperCase();
   }
 }

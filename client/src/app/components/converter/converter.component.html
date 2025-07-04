@@ -109,7 +109,7 @@
         {{ result.result | number:'1.2-6' }}
       </div>
       <div class="result-time">
-        Computed in {{ result.time_taken_ms }}ms using {{ conversionForm.mode.toUpperCase() }}
+        Computed in {{ result.time_taken_ms }}ms using {{ getModeDisplayName(conversionForm.mode) }}
       </div>
     </div>
   </div>
@@ -130,7 +130,7 @@
           </div>
           <div style="font-size: 0.875rem; color: #6b7280;">
             <span style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 6px; margin-right: 0.5rem;">
-              {{ item.mode.toUpperCase() }}
+              {{ getModeDisplayName(item.mode) }}
             </span>
             <span style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 6px; margin-right: 0.5rem;">
               {{ item.time_taken_ms }}ms

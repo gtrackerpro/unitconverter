@@ -5,7 +5,7 @@ export interface IConversionLog extends Document {
   from_unit: string;
   to_unit: string;
   converted_value: number;
-  mode: 'node' | 'cpp';
+  mode: 'node' | 'cpp' | 'python' | 'java';
   time_taken_ms: number;
   timestamp: Date;
 }
@@ -47,7 +47,7 @@ const ConversionLogSchema: Schema = new Schema({
   mode: {
     type: String,
     required: true,
-    enum: ['node', 'cpp']
+    enum: ['node', 'cpp', 'python', 'java']
   },
   time_taken_ms: {
     type: Number,

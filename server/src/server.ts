@@ -13,8 +13,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Global C++ process variable
+// Global process variables
 let cppProcess: ChildProcess | null = null;
+let pythonProcess: ChildProcess | null = null;
+let javaProcess: ChildProcess | null = null;
 
 // Middleware
 app.use(helmet());
@@ -30,10 +32,15 @@ app.use('/api', conversionRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  const serviceStatus = ConversionService.getServiceStatus();
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    cppService: cppProcess ? 'running' : 'stopped'
+    services: {
+      cpp: serviceStatus.cpp,
+      python: serviceStatus.python,
+      java: serviceStatus.java
+    }
   });
 });
 
@@ -114,22 +121,124 @@ const initializeCppService = () => {
   }
 };
 
+// Initialize Python service
+const initializePythonService = () => {
+  try {
+    const pythonScript = path.join(__dirname, '../python/unit_converter.py');
+    console.log('🐍 Starting Python service:', pythonScript);
+    
+    pythonProcess = spawn('python3', [pythonScript], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    // Handle Python process output
+    pythonProcess.stdout?.on('data', (data: Buffer) => {
+      ConversionService.handlePythonOutput(data);
+    });
+
+    // Handle Python process errors
+    pythonProcess.stderr?.on('data', (data: Buffer) => {
+      console.error('❌ Python service error:', data.toString());
+    });
+
+    // Handle Python process close
+    pythonProcess.on('close', (code) => {
+      console.log(`⚠️ Python service exited with code ${code}`);
+      pythonProcess = null;
+      
+      // Attempt to restart after a delay
+      setTimeout(() => {
+        console.log('🔄 Attempting to restart Python service...');
+        initializePythonService();
+      }, 5000);
+    });
+
+    // Handle Python process errors
+    pythonProcess.on('error', (error) => {
+      console.error('❌ Failed to start Python service:', error.message);
+      pythonProcess = null;
+    });
+
+    // Set the process in the conversion service
+    ConversionService.setPythonProcess(pythonProcess);
+    
+    console.log('✅ Python service initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize Python service:', error);
+  }
+};
+
+// Initialize Java service
+const initializeJavaService = () => {
+  try {
+    const javaClassPath = path.join(__dirname, '../java/build');
+    console.log('☕ Starting Java service with classpath:', javaClassPath);
+    
+    javaProcess = spawn('java', ['-cp', javaClassPath, 'com.unitconverter.UnitConverterApp'], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    // Handle Java process output
+    javaProcess.stdout?.on('data', (data: Buffer) => {
+      ConversionService.handleJavaOutput(data);
+    });
+
+    // Handle Java process errors
+    javaProcess.stderr?.on('data', (data: Buffer) => {
+      console.error('❌ Java service error:', data.toString());
+    });
+
+    // Handle Java process close
+    javaProcess.on('close', (code) => {
+      console.log(`⚠️ Java service exited with code ${code}`);
+      javaProcess = null;
+      
+      // Attempt to restart after a delay
+      setTimeout(() => {
+        console.log('🔄 Attempting to restart Java service...');
+        initializeJavaService();
+      }, 5000);
+    });
+
+    // Handle Java process errors
+    javaProcess.on('error', (error) => {
+      console.error('❌ Failed to start Java service:', error.message);
+      javaProcess = null;
+    });
+
+    // Set the process in the conversion service
+    ConversionService.setJavaProcess(javaProcess);
+    
+    console.log('✅ Java service initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize Java service:', error);
+  }
+};
+
 // Graceful shutdown
 const gracefulShutdown = () => {
   console.log('🛑 Shutting down gracefully...');
   
-  if (cppProcess) {
-    console.log('🔧 Terminating C++ service...');
-    cppProcess.kill('SIGTERM');
-    
-    // Force kill after 5 seconds if not terminated
-    setTimeout(() => {
-      if (cppProcess && !cppProcess.killed) {
-        console.log('⚠️ Force killing C++ service...');
-        cppProcess.kill('SIGKILL');
-      }
-    }, 5000);
-  }
+  const processes = [
+    { name: 'C++', process: cppProcess },
+    { name: 'Python', process: pythonProcess },
+    { name: 'Java', process: javaProcess }
+  ];
+  
+  processes.forEach(({ name, process }) => {
+    if (process) {
+      console.log(`🔧 Terminating ${name} service...`);
+      process.kill('SIGTERM');
+      
+      // Force kill after 5 seconds if not terminated
+      setTimeout(() => {
+        if (process && !process.killed) {
+          console.log(`⚠️ Force killing ${name} service...`);
+          process.kill('SIGKILL');
+        }
+      }, 5000);
+    }
+  });
   
   process.exit(0);
 };
@@ -142,8 +251,10 @@ process.on('SIGTERM', gracefulShutdown);
 const startServer = async () => {
   await connectDB();
   
-  // Initialize C++ service
+  // Initialize all services
   initializeCppService();
+  initializePythonService();
+  initializeJavaService();
   
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);

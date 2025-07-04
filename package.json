@@ -9,7 +9,11 @@
     "build": "cd client && npm run build && cd ../server && npm run build",
     "start": "cd server && npm start",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install",
-    "cpp:build": "cd server/cpp && g++ -o unit_converter unit_converter.cpp"
+    "setup:all": "npm run install:all && npm run build:all",
+    "build:all": "npm run cpp:build && npm run java:build",
+    "cpp:build": "cd server && npm run cpp:build",
+    "java:build": "cd server && npm run java:compile",
+    "python:test": "cd server && npm run python:test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

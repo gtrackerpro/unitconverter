@@ -13,7 +13,7 @@ import { ConversionRequest, ConversionResponse, ConversionHistory } from '../../
 })
 export class ConverterComponent implements OnInit {
   conversionForm: ConversionRequest = {
-    value: 0,
+    value: 1, // Changed from 0 to 1 to prevent validation error
     from: 'meter',
     to: 'feet',
     mode: 'node'
